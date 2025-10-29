@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { Calendar, TrendingUp, AlertCircle } from "lucide-react"
+import { Calendar, TrendingUp, AlertCircle, Plus, X } from "lucide-react"
 
 interface AttendanceRecord {
   id: string
@@ -26,8 +28,7 @@ interface CourseStats {
 }
 
 export function AttendanceContent() {
-  // Mock attendance data
-  const [attendanceRecords] = useState<AttendanceRecord[]>([
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([
     { id: "1", courseCode: "CS101", courseName: "Introduction to Programming", date: "2024-10-20", status: "present" },
     { id: "2", courseCode: "CS101", courseName: "Introduction to Programming", date: "2024-10-18", status: "present" },
     {
@@ -45,6 +46,14 @@ export function AttendanceContent() {
     { id: "8", courseCode: "ENG102", courseName: "English Literature", date: "2024-10-18", status: "present" },
     { id: "9", courseCode: "ENG102", courseName: "English Literature", date: "2024-10-16", status: "present" },
   ])
+
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newRecord, setNewRecord] = useState({
+    courseCode: "",
+    courseName: "",
+    date: new Date().toISOString().split("T")[0],
+    status: "present" as const,
+  })
 
   // Calculate course statistics
   const courseStats: CourseStats[] = [
@@ -114,6 +123,34 @@ export function AttendanceContent() {
     }
   }
 
+  const handleAddRecord = () => {
+    if (!newRecord.courseCode || !newRecord.courseName) {
+      alert("Please fill in all fields")
+      return
+    }
+
+    const record: AttendanceRecord = {
+      id: Date.now().toString(),
+      courseCode: newRecord.courseCode,
+      courseName: newRecord.courseName,
+      date: newRecord.date,
+      status: newRecord.status,
+    }
+
+    setAttendanceRecords((prev) => [record, ...prev])
+    setNewRecord({
+      courseCode: "",
+      courseName: "",
+      date: new Date().toISOString().split("T")[0],
+      status: "present",
+    })
+    setShowAddForm(false)
+  }
+
+  const handleDeleteRecord = (id: string) => {
+    setAttendanceRecords((prev) => prev.filter((r) => r.id !== id))
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -160,6 +197,105 @@ export function AttendanceContent() {
               <p className="text-3xl font-bold text-red-600">{overallStats.absent}</p>
             </div>
             <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+        </Card>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Add Attendance Record</h2>
+          <Button onClick={() => setShowAddForm(!showAddForm)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            {showAddForm ? "Cancel" : "Add Record"}
+          </Button>
+        </div>
+
+        {showAddForm && (
+          <Card className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Course Code</label>
+                <Input
+                  placeholder="e.g., CS101"
+                  value={newRecord.courseCode}
+                  onChange={(e) => setNewRecord((prev) => ({ ...prev, courseCode: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Course Name</label>
+                <Input
+                  placeholder="e.g., Introduction to Programming"
+                  value={newRecord.courseName}
+                  onChange={(e) => setNewRecord((prev) => ({ ...prev, courseName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Date</label>
+                <Input
+                  type="date"
+                  value={newRecord.date}
+                  onChange={(e) => setNewRecord((prev) => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                <select
+                  value={newRecord.status}
+                  onChange={(e) => setNewRecord((prev) => ({ ...prev, status: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="late">Late</option>
+                </select>
+              </div>
+            </div>
+            <Button onClick={handleAddRecord} className="bg-green-600 hover:bg-green-700 w-full">
+              Save Record
+            </Button>
+          </Card>
+        )}
+      </div>
+
+      {/* Recent Records */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-slate-900">Recent Attendance Records</h2>
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Course</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Date</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendanceRecords.map((record) => (
+                  <tr key={record.id} className="border-b border-slate-200 hover:bg-slate-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-slate-900">{record.courseCode}</p>
+                        <p className="text-sm text-slate-600">{record.courseName}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-900">{new Date(record.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{getStatusBadge(record.status)}</td>
+                    <td className="px-6 py-4">
+                      <Button
+                        onClick={() => handleDeleteRecord(record.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       </div>
@@ -230,40 +366,6 @@ export function AttendanceContent() {
             </div>
           </Card>
         ))}
-      </div>
-
-      {/* Recent Records */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Recent Attendance Records</h2>
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Course</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Date</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-slate-900">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceRecords.map((record) => (
-                  <tr key={record.id} className="border-b border-slate-200 hover:bg-slate-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-slate-900">{record.courseCode}</p>
-                        <p className="text-sm text-slate-600">{record.courseName}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-900">{new Date(record.date).toLocaleDateString()}</td>
-                    <td className="px-6 py-4">{getStatusBadge(record.status)}</td>
-                    <td className="px-6 py-4 text-slate-600">{record.time || "09:00 AM"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
       </div>
     </div>
   )

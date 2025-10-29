@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { logout } from "@/lib/auth"
 import { getUser } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Menu, X, LogOut, BookOpen, BarChart3, FileText, Home } from "lucide-react"
+import { Menu, X, LogOut, BookOpen, BarChart3, FileText, Home, User, Upload, Calendar, Settings } from "lucide-react"
 import Link from "next/link"
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { href: "/attendance", label: "Attendance", icon: BarChart3 },
     { href: "/resources", label: "Resources", icon: BookOpen },
     { href: "/notes", label: "My Notes", icon: FileText },
+    { href: "/profile", label: "My Profile", icon: User },
+    { href: "/upload-resource", label: "Upload Resource", icon: Upload },
+    { href: "/schedule", label: "Schedule", icon: Calendar },
   ]
+
+  const adminItems = user?.role === "admin" ? [{ href: "/admin", label: "Admin Dashboard", icon: Settings }] : []
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -55,6 +60,26 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Link>
             )
           })}
+
+          {adminItems.length > 0 && (
+            <>
+              <div className="my-4 border-t border-slate-700" />
+              <div className="px-4 py-2">
+                {sidebarOpen && <p className="text-xs font-semibold text-slate-400 uppercase">Admin</p>}
+              </div>
+              {adminItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer bg-slate-800/50">
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                    </div>
+                  </Link>
+                )
+              })}
+            </>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-800">
@@ -62,7 +87,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             {sidebarOpen && (
               <div>
                 <p className="text-xs text-slate-400 mb-1">Logged in as</p>
-                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-sm font-medium truncate">{user?.fullName || user?.name}</p>
+                {user?.role === "admin" && <p className="text-xs text-purple-400 mt-1">Administrator</p>}
               </div>
             )}
           </div>
