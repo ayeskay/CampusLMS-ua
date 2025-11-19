@@ -23,6 +23,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      // DEMO ADMIN LOGIN
       if (email === "admin@campus.edu" && password === "admin123") {
         const demoAdmin = {
           id: "demo-admin-id",
@@ -32,6 +33,9 @@ export default function LoginPage() {
           studentId: "ADMIN001",
         }
         
+        // Set cookie for middleware bypass (Expires in 1 day)
+        document.cookie = "demo_session=true; path=/; max-age=86400"
+
         localStorage.setItem("authToken", "demo-admin-token")
         localStorage.setItem("user", JSON.stringify(demoAdmin))
         
@@ -39,6 +43,7 @@ export default function LoginPage() {
         return
       }
 
+      // DEMO STUDENT LOGIN
       if (email === "student1@example.com" && password === "password123") {
         const demoStudent = {
           id: "demo-student-id",
@@ -48,6 +53,9 @@ export default function LoginPage() {
           studentId: "STU001",
         }
         
+        // Set cookie for middleware bypass (Expires in 1 day)
+        document.cookie = "demo_session=true; path=/; max-age=86400"
+
         localStorage.setItem("authToken", "demo-student-token")
         localStorage.setItem("user", JSON.stringify(demoStudent))
         
@@ -55,6 +63,7 @@ export default function LoginPage() {
         return
       }
 
+      // FALLBACK: Attempt real login (will likely fail in demo mode without backend)
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

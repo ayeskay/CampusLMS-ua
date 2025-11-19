@@ -13,6 +13,9 @@ export function logout() {
   if (typeof window === "undefined") return
   localStorage.removeItem("authToken")
   localStorage.removeItem("user")
+  
+  // Clear the demo cookie
+  document.cookie = "demo_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;"
 }
 
 export function isAuthenticated(): boolean {
