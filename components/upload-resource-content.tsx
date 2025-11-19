@@ -2,27 +2,29 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getSupabaseClient } from "@/lib/supabase/client"
 import { getUser } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, CheckCircle, Upload, FileText } from "lucide-react"
+import { AlertCircle, CheckCircle, Upload, FileText } from 'lucide-react'
 
 interface UploadedResource {
   id: string
   title: string
   description: string
   type: string
-  course: string
-  status: "pending" | "approved" | "rejected"
-  uploadedAt: string
+  course_id: string
+  approval_status: "pending" | "approved" | "rejected"
+  created_at: string
 }
 
 export function UploadResourceContent() {
   const user = getUser()
+  const supabase = getSupabaseClient()
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -33,26 +35,35 @@ export function UploadResourceContent() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [uploadedResources, setUploadedResources] = useState<UploadedResource[]>([
-    {
-      id: "1",
-      title: "Lecture Notes - Chapter 1",
-      description: "Introduction to Computer Science",
-      type: "pdf",
-      course: "CS101",
-      status: "approved",
-      uploadedAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      title: "Assignment 1 Solution",
-      description: "Solution for assignment 1",
-      type: "pdf",
-      course: "CS101",
-      status: "pending",
-      uploadedAt: "2024-01-20",
-    },
-  ])
+  const [uploadedResources, setUploadedResources] = useState<UploadedResource[]>([])
+  const [isFetchingResources, setIsFetchingResources] = useState(true)
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    const fetchResources = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("resources")
+          .select("*")
+          .eq("uploaded_by", user.id)
+          .order("created_at", { ascending: false })
+
+        if (error) {
+          console.error("[v0] Error fetching resources:", error)
+          return
+        }
+
+        setUploadedResources(data || [])
+      } catch (err) {
+        console.error("[v0] Fetch resources error:", err)
+      } finally {
+        setIsFetchingResources(false)
+      }
+    }
+
+    fetchResources()
+  }, [user?.id, supabase])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -87,28 +98,45 @@ export function UploadResourceContent() {
       return
     }
 
+    if (!user?.id) {
+      setError("User not authenticated")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      // TODO: In production, upload to Supabase Storage and create resource record
-      const newResource: UploadedResource = {
-        id: Math.random().toString(36).substr(2, 9),
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
-        course: formData.course,
-        status: "pending",
-        uploadedAt: new Date().toISOString().split("T")[0],
+      const { data, error } = await supabase
+        .from("resources")
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          type: formData.type,
+          course_id: formData.course,
+          uploaded_by: user.id,
+          approval_status: "pending",
+          created_at: new Date().toISOString(),
+        })
+        .select()
+
+      if (error) {
+        console.error("[v0] Error uploading resource:", error)
+        setError("Failed to upload resource")
+        return
       }
 
-      setUploadedResources((prev) => [newResource, ...prev])
-      setFormData({
-        title: "",
-        description: "",
-        type: "pdf",
-        course: "CS101",
-      })
-      setFile(null)
-      setSuccess("Resource uploaded successfully! Awaiting admin approval.")
+      if (data) {
+        setUploadedResources([data[0], ...uploadedResources])
+        setFormData({
+          title: "",
+          description: "",
+          type: "pdf",
+          course: "CS101",
+        })
+        setFile(null)
+        setSuccess("Resource uploaded successfully! Awaiting admin approval.")
+      }
     } catch (err) {
+      console.error("[v0] Upload error:", err)
       setError("Failed to upload resource")
     } finally {
       setIsLoading(false)
@@ -238,7 +266,11 @@ export function UploadResourceContent() {
 
       <div>
         <h2 className="text-xl font-bold text-slate-900 mb-4">Your Uploads</h2>
-        {uploadedResources.length === 0 ? (
+        {isFetchingResources ? (
+          <Card className="p-6 text-center text-slate-600">
+            <p>Loading resources...</p>
+          </Card>
+        ) : uploadedResources.length === 0 ? (
           <Card className="p-6 text-center text-slate-600">
             <FileText className="w-12 h-12 mx-auto mb-2 text-slate-400" />
             <p>No resources uploaded yet</p>
@@ -254,15 +286,15 @@ export function UploadResourceContent() {
                     <div className="flex gap-2 mt-2 text-xs text-slate-500">
                       <span>{resource.type}</span>
                       <span>•</span>
-                      <span>{resource.course}</span>
+                      <span>{resource.course_id}</span>
                       <span>•</span>
-                      <span>{resource.uploadedAt}</span>
+                      <span>{new Date(resource.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                   <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(resource.status)}`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(resource.approval_status)}`}
                   >
-                    {resource.status.charAt(0).toUpperCase() + resource.status.slice(1)}
+                    {resource.approval_status.charAt(0).toUpperCase() + resource.approval_status.slice(1)}
                   </div>
                 </div>
               </Card>

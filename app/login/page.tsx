@@ -3,16 +3,16 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -23,10 +23,42 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      if (email === "admin@campus.edu" && password === "admin123") {
+        const demoAdmin = {
+          id: "demo-admin-id",
+          email: "admin@campus.edu",
+          fullName: "Demo Admin",
+          role: "admin",
+          studentId: "ADMIN001",
+        }
+        
+        localStorage.setItem("authToken", "demo-admin-token")
+        localStorage.setItem("user", JSON.stringify(demoAdmin))
+        
+        router.push("/admin")
+        return
+      }
+
+      if (email === "student1@example.com" && password === "password123") {
+        const demoStudent = {
+          id: "demo-student-id",
+          email: "student1@example.com",
+          fullName: "Demo Student",
+          role: "student",
+          studentId: "STU001",
+        }
+        
+        localStorage.setItem("authToken", "demo-student-token")
+        localStorage.setItem("user", JSON.stringify(demoStudent))
+        
+        router.push("/dashboard")
+        return
+      }
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       })
 
       const data = await response.json()
@@ -60,15 +92,15 @@ export default function LoginPage() {
         <Card className="p-8 shadow-lg">
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
-                Username
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                Email
               </label>
               <Input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 required
               />
@@ -104,10 +136,15 @@ export default function LoginPage() {
           <div className="mt-6 pt-6 border-t border-slate-200">
             <p className="text-center text-sm text-slate-600 mb-4">
               Demo credentials: <br />
-              <span className="font-mono text-xs">username: student1</span> <br />
+              <span className="font-mono text-xs">email: student1@example.com</span> <br />
               <span className="font-mono text-xs">password: password123</span>
             </p>
             <p className="text-center text-sm text-slate-600">
+              Admin demo: <br />
+              <span className="font-mono text-xs">email: admin@campus.edu</span> <br />
+              <span className="font-mono text-xs">password: admin123</span>
+            </p>
+            <p className="text-center text-sm text-slate-600 mt-4">
               Don't have an account?{" "}
               <Link href="/signup" className="text-slate-900 font-semibold hover:underline">
                 Sign Up

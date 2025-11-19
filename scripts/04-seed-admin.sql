@@ -1,7 +1,7 @@
 -- Insert default admin user for demo purposes
 INSERT INTO users (id, full_name, email, student_id, role, created_at)
 VALUES (
-  'admin-demo-001',
+  gen_random_uuid(),
   'Admin User',
   'admin@campus.edu',
   'ADMIN001',
@@ -14,3 +14,4 @@ ON CONFLICT (email) DO NOTHING;
 -- Run this in Supabase Auth section to create the auth user:
 -- Email: admin@campus.edu
 -- Password: admin123
+</merged_code

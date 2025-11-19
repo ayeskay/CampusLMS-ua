@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, CheckCircle, Plus, X } from "lucide-react"
+import { AlertCircle, CheckCircle, Plus, X } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -25,7 +25,6 @@ interface Course {
 }
 
 export function ProfileContent() {
-  const user = getUser()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([])
   const [availableCourses, setAvailableCourses] = useState<Course[]>([])
@@ -40,6 +39,7 @@ export function ProfileContent() {
   const [newCourseCredits, setNewCourseCredits] = useState("3")
 
   useEffect(() => {
+    const user = getUser()
     if (user) {
       setProfile({
         id: user.id,
@@ -53,10 +53,10 @@ export function ProfileContent() {
         email: user.email || "",
         studentId: user.studentId || "",
       })
-      loadCourses()
     }
+    loadCourses()
     setIsLoading(false)
-  }, [user])
+  }, [])
 
   const loadCourses = async () => {
     // Mock data - in production, fetch from Supabase

@@ -1,71 +1,62 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getSupabaseClient } from "@/lib/supabase/client"
+import { getUser } from "@/lib/auth"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Plus, Trash2, Edit2, X, Check, Calendar, Tag } from "lucide-react"
+import { Search, Plus, Trash2, Edit2, X, Check, Calendar, Tag } from 'lucide-react'
 
 interface Note {
   id: string
   title: string
   content: string
   category: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
   color: string
 }
 
 export function NotesContent() {
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: "1",
-      title: "Variables and Data Types",
-      content:
-        "Key concepts:\n- Variables store data\n- Common types: int, string, float, boolean\n- Type conversion is important",
-      category: "CS101",
-      createdAt: "2024-10-15",
-      updatedAt: "2024-10-15",
-      color: "bg-blue-50",
-    },
-    {
-      id: "2",
-      title: "Loop Structures",
-      content:
-        "For loops: iterate over sequences\nWhile loops: repeat while condition is true\nDo-while: execute at least once",
-      category: "CS101",
-      createdAt: "2024-10-14",
-      updatedAt: "2024-10-14",
-      color: "bg-green-50",
-    },
-    {
-      id: "3",
-      title: "Integration by Parts",
-      content: "Formula: ∫u dv = uv - ∫v du\nChoose u and dv carefully\nOften used for polynomial × exponential",
-      category: "MATH201",
-      createdAt: "2024-10-12",
-      updatedAt: "2024-10-12",
-      color: "bg-purple-50",
-    },
-    {
-      id: "4",
-      title: "Shakespeare's Themes",
-      content:
-        "Love, betrayal, ambition, mortality\nSonnets explore unrequited love\nTragedies examine power and corruption",
-      category: "ENG102",
-      createdAt: "2024-10-10",
-      updatedAt: "2024-10-10",
-      color: "bg-orange-50",
-    },
-  ])
-
+  const user = getUser()
+  const supabase = getSupabaseClient()
+  const [notes, setNotes] = useState<Note[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({ title: "", content: "", category: "" })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    const fetchNotes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("notes")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false })
+
+        if (error) {
+          console.error("[v0] Error fetching notes:", error)
+          return
+        }
+
+        setNotes(data || [])
+      } catch (err) {
+        console.error("[v0] Fetch notes error:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchNotes()
+  }, [user?.id, supabase])
 
   const categories = Array.from(new Set(notes.map((n) => n.category)))
   const colors = ["bg-blue-50", "bg-green-50", "bg-purple-50", "bg-orange-50", "bg-pink-50", "bg-yellow-50"]
@@ -78,45 +69,95 @@ export function NotesContent() {
     return matchesSearch && matchesCategory
   })
 
-  const handleCreateNote = () => {
-    if (formData.title.trim() && formData.content.trim() && formData.category.trim()) {
-      const newNote: Note = {
-        id: Date.now().toString(),
-        title: formData.title,
-        content: formData.content,
-        category: formData.category,
-        createdAt: new Date().toISOString().split("T")[0],
-        updatedAt: new Date().toISOString().split("T")[0],
-        color: colors[Math.floor(Math.random() * colors.length)],
+  const handleCreateNote = async () => {
+    if (formData.title.trim() && formData.content.trim() && formData.category.trim() && user?.id) {
+      try {
+        const { data, error } = await supabase
+          .from("notes")
+          .insert({
+            title: formData.title,
+            content: formData.content,
+            category: formData.category,
+            user_id: user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+
+        if (error) {
+          console.error("[v0] Error creating note:", error)
+          return
+        }
+
+        if (data) {
+          const newNote = {
+            ...data[0],
+            color: colors[Math.floor(Math.random() * colors.length)],
+          }
+          setNotes([newNote, ...notes])
+        }
+
+        setFormData({ title: "", content: "", category: "" })
+        setIsCreating(false)
+      } catch (err) {
+        console.error("[v0] Create note error:", err)
       }
-      setNotes([newNote, ...notes])
-      setFormData({ title: "", content: "", category: "" })
-      setIsCreating(false)
     }
   }
 
-  const handleUpdateNote = (id: string) => {
+  const handleUpdateNote = async (id: string) => {
     if (formData.title.trim() && formData.content.trim() && formData.category.trim()) {
-      setNotes(
-        notes.map((note) =>
-          note.id === id
-            ? {
-                ...note,
-                title: formData.title,
-                content: formData.content,
-                category: formData.category,
-                updatedAt: new Date().toISOString().split("T")[0],
-              }
-            : note,
-        ),
-      )
-      setEditingId(null)
-      setFormData({ title: "", content: "", category: "" })
+      try {
+        const { error } = await supabase
+          .from("notes")
+          .update({
+            title: formData.title,
+            content: formData.content,
+            category: formData.category,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", id)
+
+        if (error) {
+          console.error("[v0] Error updating note:", error)
+          return
+        }
+
+        setNotes(
+          notes.map((note) =>
+            note.id === id
+              ? {
+                  ...note,
+                  title: formData.title,
+                  content: formData.content,
+                  category: formData.category,
+                  updated_at: new Date().toISOString(),
+                }
+              : note,
+          ),
+        )
+
+        setEditingId(null)
+        setFormData({ title: "", content: "", category: "" })
+      } catch (err) {
+        console.error("[v0] Update note error:", err)
+      }
     }
   }
 
-  const handleDeleteNote = (id: string) => {
-    setNotes(notes.filter((note) => note.id !== id))
+  const handleDeleteNote = async (id: string) => {
+    try {
+      const { error } = await supabase.from("notes").delete().eq("id", id)
+
+      if (error) {
+        console.error("[v0] Error deleting note:", error)
+        return
+      }
+
+      setNotes(notes.filter((note) => note.id !== id))
+    } catch (err) {
+      console.error("[v0] Delete note error:", err)
+    }
   }
 
   const handleEditNote = (note: Note) => {
@@ -145,7 +186,7 @@ export function NotesContent() {
         )}
       </div>
 
-      {/* Create/Edit Form */}
+      {/* ... rest of existing form and display code ... */}
       {(isCreating || editingId) && (
         <Card className="p-6 border-2 border-slate-900">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">{editingId ? "Edit Note" : "Create New Note"}</h2>
@@ -195,7 +236,6 @@ export function NotesContent() {
         </Card>
       )}
 
-      {/* Search and Filters */}
       {!isCreating && !editingId && (
         <Card className="p-6">
           <div className="space-y-4">
@@ -236,14 +276,17 @@ export function NotesContent() {
         </Card>
       )}
 
-      {/* Notes Grid */}
       {!isCreating && !editingId && (
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
             {filteredNotes.length} note{filteredNotes.length !== 1 ? "s" : ""} found
           </p>
 
-          {filteredNotes.length === 0 ? (
+          {isLoading ? (
+            <Card className="p-12 text-center">
+              <p className="text-slate-600">Loading notes...</p>
+            </Card>
+          ) : filteredNotes.length === 0 ? (
             <Card className="p-12 text-center">
               <Tag className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-600 mb-4">No notes found</p>
@@ -257,7 +300,7 @@ export function NotesContent() {
               {filteredNotes.map((note) => (
                 <Card
                   key={note.id}
-                  className={`p-6 ${note.color} border-l-4 border-slate-900 hover:shadow-lg transition-shadow`}
+                  className={`p-6 ${note.color || "bg-blue-50"} border-l-4 border-slate-900 hover:shadow-lg transition-shadow`}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <Badge variant="outline">{note.category}</Badge>
@@ -285,7 +328,7 @@ export function NotesContent() {
                   <div className="flex items-center justify-between text-xs text-slate-600 pt-4 border-t border-slate-300">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      <span>{new Date(note.updatedAt).toLocaleDateString()}</span>
+                      <span>{new Date(note.updated_at).toLocaleDateString()}</span>
                     </div>
                     <span className="text-slate-500">{note.content.split(" ").length} words</span>
                   </div>
